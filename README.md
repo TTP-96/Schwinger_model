@@ -8,3 +8,4 @@ There are 3 approaches implemented here:
 
 Examples of how to run each approach and carry out comparisons are provided in their respective files. 
 
+There is also a utility script compare_profiles.py that can be used to compare the static profiles obtained using the TNS and NQS meth (see script for example usage).
