@@ -19,8 +19,11 @@ To check value of chiral condensate vs theory in massless case:
 
 python main_naive.py   --N 12 --m 0.0 --g 1.0 --w 1.0 --q 1.0 --theta 0.0 --k 4 --R_star 8
 
-To see static potential V(R) and field profiles in the presence of a probe pair ±q to observe string breaking:
-python main_naive.py   --N 12 --m 0.5 --g 1.0 --w 1.0 --q 0.5 --theta 0.0 --k 4 --R_star 6
+
+
+python main.py   --N 12 --m 0.5 --g 0.1 --w 1.0 --q 1.0 --theta 0.0 --k 4 --R_star 6 # No string breaking, linear potential
+
+python main.py   --N 12 --m 0.5 --g 1.0 --w 1.0 --q 0.8 --theta 0.0 --k 4 --R_star 6 # String breaking observed
 """
 
 from __future__ import annotations
@@ -199,6 +202,7 @@ def build_hamiltonian(N: int, m: float, g: float, w: float, theta: float,
       - ext_q: length-N array of external static charges at sites (default zeros)
       - l0_links: length-(N-1) array of per-link ℓ0_n = ϑ_n/(2π).
                   If None, we use uniform l0 = theta/(2π).
+      - w: hopping amplitude
     """
     basis, index_map = generate_basis(N)
     dim = len(basis)
@@ -313,7 +317,9 @@ def gs_observables(N: int, vec: np.ndarray, m: float, g: float, theta: float) ->
     elif m > 4.0:
         print("Chiral condensate (from occupations) <psi_bar psi> = {:.6f}\t Theory=-1/(4*pi*m)={}".format(cc,   -1.0/(2.0*math.pi*m)))
     # cc,cc_i = comp_chiral_condensate(probs)
-    # print("Chiral condensate (from occupations) <psi_bar psi> = {:.6f}".format(cc))
+    # print occupations
+    print("  <n_i> =", np.array_str(occ, precision=10))
+    print("Chiral condensate (from occupations) <psi_bar psi> = {:.6f}".format(cc))
     return occ, qexp, Lexp
 
 
@@ -328,7 +334,7 @@ def flux_and_charge_profiles(N, vec, theta0, q=None, iL=None, iR=None, use_theta
         if (q is not None) and (iL is not None) and (iR is not None):
             l0_links = theta_links_from_pair(N, iL, iR, float(q), theta0)
         else:
-            l0_links = None  # no probes → no link shifts
+            l0_links = None  # no probes -> no link shifts
         ext_q = None
         l0 = theta0 / (2*np.pi)
     else:
@@ -384,6 +390,10 @@ def induced_profiles_at_R(N, m, g, w, theta0, q, R,
                                                 q=q, iL=iL, iR=iR,
                                                 use_theta_links=False)
 
+    # print GS energies for debugging
+    print(f"E0 (no probes) = {vals0[0]:.12f}, E (R={R}) = {vals[0]:.12f}")
+    
+
     dq = q1 - q0   # induced charge
     dL = L1 - L0   # induced flux
     return (iL, iR), dq, dL
@@ -399,6 +409,7 @@ def main():
     parser.add_argument("--k", type=int, default=2, help="Number of lowest eigenpairs to compute.")
     parser.add_argument("--q", type=float, default=0.5, help="Static charge at the pair (default 0.5).")
     parser.add_argument("--R_star", type=int, default=4, help="Separation R* for profiles (default 4).")
+    parser.add_argument("--plot", action="store_true", help="Plot results.")
     args = parser.parse_args()
 
 
@@ -449,11 +460,7 @@ def main():
     fig, axs = plt.subplots(2, 1, figsize=(8, 6), sharex=False)
 
     colors=["red", "blue", "green","purple","orange"]
-    # Induced charge Δq_n
 
-
-
-    
 
     # Induced charge Δq_n
     for col_count, ((iL, iR), dq, dL) in enumerate(profiles):
@@ -477,8 +484,10 @@ def main():
     axs[1].set_title('Induced flux (string region vs outside)')
     axs[1].grid(True); axs[1].legend()
 
-    plt.tight_layout(); plt.show()
-
+    plt.tight_layout(); 
+    plt.savefig("induced_profiles.png", dpi=300)
+    if args.plot:
+        plt.show()
     
     #plot static potential V(R)
     import matplotlib.pyplot as plt
@@ -490,7 +499,10 @@ def main():
     plt.grid()
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.savefig("static_potential_VR.png", dpi=300)
+    if args.plot:
+        plt.show()
+    
     
     # print("R   V(R)")
     # for r, v in zip(R, V):
